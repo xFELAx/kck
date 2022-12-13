@@ -2,12 +2,29 @@ import glob
 from scipy.io import wavfile
 from pylab import *
 from scipy import *
-from pathlib import Path
 
 male_min_max = [55, 158]
 female_min_max = [170, 295]
 HPSLoop = 6
 samples_number = 3  # Branie pod uwagę tylko 3 1-sekundowych próbek
+
+
+def read_files_from_dir(location):
+    files = glob.glob(location)
+    return files
+
+
+def true_gender(file):
+    # wyodrębnienie oryginalnej płci z nazwy pliku
+    if file.replace("/", "_").replace(".", "_").split("_")[1] == "M":
+        return 0
+    else:
+        return 1
+
+
+def read_wav(file):
+    sample_rate, data = wavfile.read(file)
+    return sample_rate, data
 
 
 def slice_into_samples(samples_counter, data_voice, sample_rate):
@@ -23,16 +40,10 @@ def slice_into_samples(samples_counter, data_voice, sample_rate):
 
     # Podział tablicy na 3 1-sekundowe próbki
     # parts1 = [data_voice[i * part_len: (i + 1) * part_len] for i in range(int(samples_counter))]
-    samples_array = [[0 for column in range(part_length)] for row in range(int(samples_counter))]
+    sample_array = [[0 for column in range(part_length)] for row in range(int(samples_counter))]
     for i in range(int(samples_counter)):
-        samples_array[i] = data_voice[i * part_length: (i + 1) * part_length]
-    return samples_array
-
-
-def check_gender(result):
-    if sum(result[male_min_max[0]: male_min_max[1]]) > sum(result[female_min_max[0]: female_min_max[1]]):
-        return 0
-    return 1
+        sample_array[i] = data_voice[i * part_length: (i + 1) * part_length]
+    return sample_array
 
 
 def apply_hanning(data):
@@ -41,9 +52,9 @@ def apply_hanning(data):
     return data
 
 
-def harmonic_product_spectrum(sample_rate, data_voice, samples_array):
-    result_parts = []
-    for data in samples_array:
+def harmonic_product_spectrum(sample_rate, sample_array):
+    partial_result = []
+    for data in sample_array:
         # if len(data) == 0:
         #    continue
         # minimalizacja krawędzi przejścia za pomocą okna Hanninga
@@ -55,31 +66,19 @@ def harmonic_product_spectrum(sample_rate, data_voice, samples_array):
             tab = copy(fft_v[::i])
             fft_r = fft_r[:len(tab)]
             fft_r *= tab
-        result_parts.append(fft_r)
-    result = [0] * len(result_parts[int(len(result_parts) / 2)])
-    for res in result_parts:
+        partial_result.append(fft_r)
+    result = [0] * len(partial_result[int(len(partial_result) / 2)])
+    for res in partial_result:
         #    if len(res) != len(result):
         #        continue
         result += res
     return result
 
 
-def true_gender(file):
-    # wyodrębnienie oryginalnej płci z nazwy pliku
-    if file.replace("/", "_").replace(".", "_").split("_")[1] == "M":
+def check_gender(result):
+    if sum(result[male_min_max[0]: male_min_max[1]]) > sum(result[female_min_max[0]: female_min_max[1]]):
         return 0
-    else:
-        return 1
-
-
-def read_files_from_dir(location):
-    files = glob.glob(location)
-    return files
-
-
-def read_wav(file):
-    sample_rate, data = wavfile.read(file)
-    return sample_rate, data
+    return 1
 
 
 def fill_and_print_coverage_matrix(files):
@@ -87,11 +86,11 @@ def fill_and_print_coverage_matrix(files):
     for wav in files:
         sample_rate, data = read_wav(wav)
         correct_gender = true_gender(wav)  # dla mężczyzny: 0 dla kobiety: 1
-        found_gender = harmonic_product_spectrum(sample_rate, data, slice_into_samples(samples_number, data, sample_rate))
+        found_gender = harmonic_product_spectrum(sample_rate, slice_into_samples(samples_number, data, sample_rate))
         m[correct_gender][check_gender(found_gender)] += 1
     print(m)
-    correctness = (m[0][0] + m[1][1]) / (sum(m[0]) + sum(m[1]))
-    print(correctness)
+    correctness_percent = (m[0][0] + m[1][1]) / (sum(m[0]) + sum(m[1]))
+    print(correctness_percent)
 
 
 def find_and_print_gender(wav):
