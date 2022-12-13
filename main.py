@@ -1,13 +1,13 @@
 import glob
-
-import numpy as np
 from scipy.io import wavfile
 from pylab import *
 from scipy import *
+from pathlib import Path
 
 male_min_max = [55, 158]
 female_min_max = [170, 295]
 HPSLoop = 6
+samples_number = 3  # Branie pod uwagę tylko 3 1-sekundowych próbek
 
 
 def slice_into_samples(samples_counter, data_voice, sample_rate):
@@ -15,9 +15,9 @@ def slice_into_samples(samples_counter, data_voice, sample_rate):
         samples_counter = len(data_voice) / sample_rate
     data_voice = data_voice[
                  max(0, int(len(data_voice) / 2) - int(samples_counter / 2 * sample_rate)): min(len(data_voice) - 1,
-                                                                                               int(len(
-                                                                                                   data_voice) / 2) + int(
-                                                                                                   samples_counter / 2 * sample_rate))]
+                                                                                                int(len(
+                                                                                                    data_voice) / 2) + int(
+                                                                                                    samples_counter / 2 * sample_rate))]
     # Branie pod uwagę tylko 3 1-sekundowych próbek z analizowanej tablicy
     part_length = int(sample_rate)
 
@@ -72,15 +72,48 @@ def true_gender(file):
         return 1
 
 
-if __name__ == "__main__":
-    M = [[0, 0], [0, 0]]
-    files = glob.glob("trainall/*")
-    samples_number = 3  # Branie pod uwagę tylko 3 1-sekundowych próbek
-    for f in files:
-        sr, array = wavfile.read(f)
-        correct = true_gender(f)  # dla mężczyzny: 0 dla kobiety: 1
-        found = harmonic_product_spectrum(sr, array, slice_into_samples(samples_number, array, sr))
-        M[correct][check_gender(found)] += 1
-    print(M)
-    correctness = (M[0][0] + M[1][1]) / (sum(M[0]) + sum(M[1]))
+def read_files_from_dir(location):
+    files = glob.glob(location)
+    return files
+
+
+def read_wav(file):
+    sample_rate, data = wavfile.read(file)
+    return sample_rate, data
+
+
+def fill_and_print_coverage_matrix(files):
+    m = [[0, 0], [0, 0]]
+    for wav in files:
+        sample_rate, data = read_wav(wav)
+        correct_gender = true_gender(wav)  # dla mężczyzny: 0 dla kobiety: 1
+        found_gender = harmonic_product_spectrum(sample_rate, data, slice_into_samples(samples_number, data, sample_rate))
+        m[correct_gender][check_gender(found_gender)] += 1
+    print(m)
+    correctness = (m[0][0] + m[1][1]) / (sum(m[0]) + sum(m[1]))
     print(correctness)
+
+
+def find_and_print_gender(wav):
+    sample_rate, data = read_wav(wav)
+    found_gender = harmonic_product_spectrum(sample_rate, data, slice_into_samples(samples_number, data, sample_rate))
+    if check_gender(found_gender) == 0:
+        print('M')
+    elif check_gender(found_gender) == 1:
+        print('K')
+
+
+if __name__ == "__main__":
+    '''
+    if len(sys.argv) != 2:
+        print("Incorrect number of arguments. Please enter path to one .wav file.")
+        exit(1)
+    path = Path(sys.argv[1])
+    if path.suffix != '.wav':
+        print("Incorrect file extension. Please enter path to .wav file.")
+        exit(1)
+    find_and_print_gender(path)
+    '''
+    path = "trainall/*"
+    files_array = read_files_from_dir(path)
+    fill_and_print_coverage_matrix(files_array)
