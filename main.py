@@ -2,7 +2,7 @@ import glob
 from scipy.io import wavfile
 from pylab import *
 from scipy import *
-
+from pathlib import Path
 male_min_max = [55, 158]
 female_min_max = [170, 295]
 HPSLoop = 6
@@ -95,7 +95,7 @@ def fill_and_print_coverage_matrix(files):
 
 def find_and_print_gender(wav):
     sample_rate, data = read_wav(wav)
-    found_gender = harmonic_product_spectrum(sample_rate, data, slice_into_samples(samples_number, data, sample_rate))
+    found_gender = harmonic_product_spectrum(sample_rate, slice_into_samples(samples_number, data, sample_rate))
     if check_gender(found_gender) == 0:
         print('M')
     elif check_gender(found_gender) == 1:
