@@ -57,6 +57,6 @@ if __name__ == "__main__":
     try:
         input_file = sys.argv[1]
         predicted = predict_gender(input_file)
-        print(input_file + "   " + predicted)
+        print(predicted)
     except:
         print("M")
